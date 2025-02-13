@@ -1,9 +1,6 @@
 const express = require("express");
-const users = require("./mockdata.json");
 const fs = require("fs");
-const db = require("./database");
 const database = require("./database");
-const { STATUS_CODES } = require("http");
 
 const app = express();
 const PORT = 8000;
@@ -19,15 +16,14 @@ app
   .get(async (req, res) => {
     try {
       const result = await database.query("SELECT * FROM users");
-      if (!result) return res.status(404).json({ status: "Bad Request" });
+      if (result.rowCount === 0)
+        return res.status(404).json({ status: "Bad Request" });
       return res.json(result.rows);
     } catch (err) {
       console.error(err);
-      res
-        .status(500)
-        .json({ status: "Internal Server Error\nCannot Fetch Data" });
+      res.status(500).json({ status: "Internal Server Error." });
     }
-  }) // when the table is empty handle that case
+  })
   .post(async (req, res) => {
     try {
       const request = req.body;
@@ -42,13 +38,11 @@ app
         newUser
       );
       return res.status(201).json({
-        status: `Successfully added a new entry with id!`,
+        status: `Successfully added a new entry!`,
       });
     } catch (err) {
       console.error(err);
-      res
-        .status(500)
-        .json({ status: "Internal Server Error\nCannot Add new Entry" });
+      res.status(500).json({ status: "Internal Server Error." });
     }
   });
 
@@ -66,12 +60,18 @@ app
       return res.status(201).json(result.rows);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ status: "Internal Server Error\nCannot find ID" });
+      res.status(500).json({ status: "Internal Server Error." });
     }
   })
   .patch(async (req, res) => {
     try {
       const id = Number(req.params.id);
+      const isIdValid = await database.query(
+        `SELECT * FROM users where id = ($1) `,
+        [id]
+      );
+      if (isIdValid.rowCount === 0)
+        return res.status(404).json({ status: "Bad Request" });
       const rowData = await database.query(
         `SELECT * FROM users WHERE id = ($1)`,
         [id]
@@ -93,12 +93,18 @@ app
       return res.status(201).json({ status: "Successful" });
     } catch (err) {
       console.error(err);
-      res.status(500).json({ status: "Internal Server Error\nCannot find ID" });
+      res.status(500).json({ status: "Internal Server Error." });
     }
   })
   .put(async (req, res) => {
     try {
       const id = Number(req.params.id);
+      const isIdValid = await database.query(
+        `SELECT * FROM users where id = ($1) `,
+        [id]
+      );
+      if (isIdValid.rowCount === 0)
+        return res.status(404).json({ status: "Bad Request" });
       const request = req.body;
       const newUser = [];
       newUser.push(request.first_name);
@@ -115,13 +121,19 @@ app
     } catch (err) {
       console.error(err);
       res.status(500).json({
-        status: "Internal Server Error\nCannot find ID to perform put",
+        status: "Internal Server Error.",
       });
     }
-  }) // when trying to access id not present value and when dtaa is given less as it requires everything
+  })
   .delete(async (req, res) => {
     try {
       const id = Number(req.params.id);
+      const isIdValid = await database.query(
+        `SELECT * FROM users where id = ($1) `,
+        [id]
+      );
+      if (isIdValid.rowCount === 0)
+        return res.status(404).json({ status: "Bad Request" });
       const result = await database.query(`DELETE FROM users WHERE id = ($1)`, [
         id,
       ]);
@@ -130,11 +142,9 @@ app
       return res.status(201).json({ status: "Deleted Successfully!" });
     } catch (err) {
       console.error(err);
-      res
-        .status(500)
-        .json({ status: "Internal Server Error\nCannot find ID To Delete" });
+      res.status(500).json({ status: "Internal Server Error." });
     }
-  }); // when id not found
+  });
 
 // implement multiple query altogether
 // middlewares + multiple thing - middleware
